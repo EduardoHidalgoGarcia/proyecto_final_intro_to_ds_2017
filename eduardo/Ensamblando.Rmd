@@ -1,0 +1,695 @@
+---
+title: "Proyecto Final"
+author: "Reemplace por integranes del equipo"
+date: "12/10/2017"
+output: 
+   html_document: 
+     smart: false
+---
+
+
+<p>**EDA (R)**</p>
+<p>Limpieza (R)</p>
+<p>Imputación (R o Python)</p>
+<p>Transformación (Python)</p>
+<p>Ingeniería de características (Python)</p>
+<p>Selección (Python)</p>
+<p>Filtrado (Python)</p>
+<p>Predicción con pipelines (multiples algoritmos) (Python) 
+<p>Medición y comparación entre modelos (Python)</p>
+
+**Nota.- El entregable debe ser un reporte reproducible con instrucciones para su ejecución**
+
+# Introducción 
+
+
+
+<p>Para esta competencia, se tiene la tarea de **clasificar** los **tipos de viaje de compras en función de los artículos que compran los clientes**. Para dar algunos ejemplos hipotéticos de tipos de viaje: un cliente puede hacer un pequeño viaje diario para cenar, un viaje semanal de compras grandes, un viaje para comprar regalos para unas próximas vacaciones o un viaje de temporada para comprar ropa.</p>
+
+
+<p>**Walmart ha categorizado los viajes** contenidos en estos datos **en 38 tipos distintos** utilizando un **método patentado** aplicado a un conjunto extendido de datos. Tiene el **desafío de recrear esta categorización / agrupamiento** con un conjunto de funciones más limitado. Esto podría proporcionar formas nuevas y más robustas para clasificar los viajes.</p>
+
+<p>**El conjunto de entrenamiento (train.csv) contiene una gran cantidad de visitas de clientes con el TripType incluido. Debe predecir el TripType para cada visita de cliente en el conjunto de prueba (test.csv). Cada visita solo puede tener un TripType. No se le proporcionará más información que la que se proporciona en los datos (por ejemplo, qué representan los TripType o más información sobre el producto).</p>
+
+
+Descripción de los campos de la data (Descripción en ingles de la página de **Kaggle**)
+
+<p>TripType - a categorical id representing the type of shopping trip the customer made. This is the ground truth that you are predicting. TripType_999 is an "other" category.</p>
+<p>VisitNumber - an id corresponding to a single trip by a single customer</p>
+<p>Weekday - the weekday of the trip</p>
+<p>Upc - the UPC number of the product purchased</p>
+<p>ScanCount - the number of the given item that was purchased. A negative value indicates a product return.</p>
+<p>DepartmentDescription - a high-level description of the item's department</p>
+<p>FinelineNumber - a more refined category for each of the products, created by Walmart</p>
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("C:/Users/Eduardo/Desktop/Documentos Finales 1er Semestre/Mineria y Analisis de Datos/Examen Final/Trabajo en Equipo/proyecto_final_intro_to_ds_2017/michelle")
+instalar <- function(paquete) {
+
+    if (!require(paquete,character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE)) {
+        install.packages(as.character(paquete), dependecies = TRUE, repos = "http://cran.us.r-project.org")
+        library(paquete, character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE)
+    }
+}
+
+paquetes <- c('readr', 'dplyr', 'ggplot2')
+
+#paquetes <- c('tidyr', 'lubridate', , 'ggvis', 'dplyr', 'tidyr', 'readr', 'rvest', 
+#              , 'stringr', 'ggthemes', 'googleVis', 'shiny', 'tibble', 'vcd', 'vcdExtra', 
+#              'GGally', 'readODS', 'readxl', "RSQLite", 'extracat', 'gridExtra', 'outliers','knirt','kableExtra'.'formattable','lubridate','RColorBrewer','pals')
+
+lapply(paquetes, instalar)
+
+```
+
+## Carga
+
+En esta sección cargamos los datasets `train`y `test` y generamos el dataset `total`.
+
+**train**
+
+* Cargamos los datos `train`
+<p>Nota.- La libreria ReadR, con la instrucción read_csv genera tibbles con *correciones* automaticas, para una primer aproximacion se recomienda utilizar la instruccion de R base</p>
+
+```{r}
+train <- read.csv("C:/Users/Eduardo/Desktop/Documentos Finales 1er Semestre/Mineria y Analisis de Datos/Examen Final/Trabajo en Equipo/proyecto_final_intro_to_ds_2017/michelle/walmart_train.csv")
+```
+
+* Validamos la clase del objeto `train`
+
+```{r}
+class(train)
+```
+
+* Observamos la estructura de `train` 
+
+```{r}
+str(train)
+```
+
+* Modificamos la clase de algunas columnas de `train`
+
+```{r}
+train$TripType <- as.factor(train$TripType)
+train$DepartmentDescription <- as.character(train$DepartmentDescription)
+#train$VisitNumber <- as.factor(train$VisitNumber)
+#train$Upc <- as.factor(train$Upc)
+#train$FinelineNumber <- as.factor(train$FinelineNumber)
+```
+
+**test**
+
+* Cargamos los datos `test`
+
+```{r}
+test <- read.csv("C:/Users/Eduardo/Desktop/Documentos Finales 1er Semestre/Mineria y Analisis de Datos/Examen Final/Trabajo en Equipo/proyecto_final_intro_to_ds_2017/michelle/walmart_test.csv")
+```
+
+* Validamos la clase del objeto `test`
+
+```{r}
+class(test)
+```
+
+* Observamos la estructura de `test` 
+
+```{r}
+str(test)
+```
+
+* Modificamos la clase de algunas columnas de `test`
+
+```{r}
+test$DepartmentDescription <- as.character(test$DepartmentDescription)
+```
+
+**total**
+
+* Concatenamos `test` y `train`
+
+```{r}
+total <- rbind(train[,-1], test)
+```
+
+* Observamos la estructura de `total` 
+
+```{r}
+str(total)
+```
+
+* Modificamos la clase de algunas columnas de `total`
+
+```{r}
+total$VisitNumber <- as.factor(total$VisitNumber)
+total$DepartmentDescription <- as.factor(total$DepartmentDescription)
+#total$Upc <- as.factor(total$Upc)
+#total$FinelineNumber <- as.factor(total$FinelineNumber)
+```
+
+## Exploración univariada
+
+En esta sección hacemos una exploración univarida de las columnas en todo el dataset (`test` y`train`).
+
+### Campos vacíos
+
+**train**
+
+* Cuántos NAs hay por columna en el dataset `train`?
+
+```{r}
+apply(train, 2, function(x) sum(is.na(x)))
+```
+
+* Cuántos NULLs hay por columna en el dataset `train`?
+
+```{r}
+apply(train, 2, function(x) sum(is.null(x)))
+```
+
+**test**
+
+* Cuántos NAs hay por columna en el dataset `test`?
+
+```{r}
+apply(test, 2, function(x) sum(is.na(x)))
+```
+
+* Cuántos NULLs hay por columna en el dataset `test`?
+
+```{r}
+apply(test, 2, function(x) sum(is.null(x)))
+```
+
+Existe el mismo número de NAs en `Upc` y en `FinelineNumber` tanto en el dataset `train` como en `test`.
+
+### TripType
+
+`TripType` es una variable categórica
+
+* Cuántas categorías tiene `TripType` en el dataset `train`?
+
+```{r}
+print(paste('numero de categorias:', length(levels(train$TripType))))
+```
+
+* Qué categorías y cuntas observaciones por categoría tiene `TripType` en el dataset `train`?
+
+```{r}
+print(summary(train$TripType))
+```
+
+```{r}
+ggplot(train, aes(TripType, fill = TripType)) +
+  geom_bar(colour = 'grey', alpha = 0.7) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  labs(title = "numero de observaciones por categoria en TripType", x = "TripType", y = "count") + 
+  coord_flip()
+```
+
+
+### VisitNumber
+
+`VisitNumber` es una variable categórica
+
+* Cuntos `VisitNumber`s hay en los datasets?
+
+```{r}
+print(paste('numero de categorias:', length(levels(as.factor(train$VisitNumber)))))
+print(paste('numero de categorias:', length(levels(as.factor(test$VisitNumber)))))
+print(paste('numero de categorias:', length(levels(total$VisitNumber))))
+```
+
+* Cul es el resumen del nºmero de observaciones por `VisitNumber` en el dataset `total`?
+
+```{r}
+summary(as.data.frame(table(total$VisitNumber))$Freq)
+```
+
+<!-- * Cul es el boxplot del nºmero de observaciones por `VisitNumber` en el dataset `total`? -->
+<!-- ```{r} -->
+<!-- ggplot(as.data.frame(table(total$VisitNumber)), aes(x = 'count', y = Freq)) + -->
+<!--   geom_boxplot(colour = 'grey', fill = 'lightblue', alpha = 0.7) + -->
+<!--   coord_flip() -->
+<!-- ``` -->
+
+### Weekday
+
+`Weekday` es una variable categórica
+
+* Cuntas observaciones por `Weekday` hay en el dataset `total`?
+
+```{r}
+summary(total$Weekday)
+```
+
+<!-- ```{r} -->
+<!-- ggplot(total, aes(Weekday, fill = Weekday)) + -->
+<!--   geom_bar(colour = 'grey', alpha = 0.7) +  -->
+<!--   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +  -->
+<!--   labs(title = "numero de observaciones por categoria en Weekday", x = "Weekday", y = "count") +  -->
+<!--   coord_flip() -->
+<!-- ``` -->
+
+### Upc
+
+`Upc` es una variable categórica
+
+* Cuntas categorías tiene `Upc` en los datasets?
+
+```{r}
+print(paste('numero de categorias:', length(levels(as.factor(train$Upc)))))
+print(paste('numero de categorias:', length(levels(as.factor(test$Upc)))))
+print(paste('numero de categorias:', length(levels(as.factor(total$Upc)))))
+```
+
+Vemos que hay demasiados `Upc` distintos. Adems, existen varios `Upc` en `test` que no estn en `train`.
+
+### FinelineNumber
+
+`FinelineNumber` es una variable categórica
+
+* Cuntas categorías tiene `FinelineNumber` en los datasets?
+
+```{r}
+print(paste('numero de categorias:', length(levels(as.factor(train$FinelineNumber)))))
+print(paste('numero de categorias:', length(levels(as.factor(test$FinelineNumber)))))
+print(paste('numero de categorias:', length(levels(as.factor(total$FinelineNumber)))))
+```
+
+Vemos que hay demasiados `FinelineNumber` distintos. Adems, existen varios `FinelineNumber` en `test` que no estn en `train`.
+
+### DepartmentDescription
+
+`DepartmentDescription` es una variable categórica
+
+* Cuántas categorías tiene `DepartmentDescription` en los datasets?
+
+```{r}
+print(paste('numero de categorias:', length(levels(as.factor(train$DepartmentDescription)))))
+print(paste('numero de categorias:', length(levels(as.factor(test$DepartmentDescription)))))
+print(paste('numero de categorias:', length(levels(total$DepartmentDescription))))
+```
+
+* Qué categorías y cuntas observaciones por categoría tiene `DepartmentDescription` en el dataset `total`?
+
+```{r}
+summary(total$DepartmentDescription)
+```
+
+Antes no identificamos NULLs en ninguna columna, pero existe una categoría 'NULL' en `DepartmentDescription`.
+
+```{r}
+ggplot(total, aes(DepartmentDescription)) +
+  geom_bar(colour = 'grey', fill = 'lightblue', alpha = 0.7) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  theme(text = element_text(size = 6)) +
+  labs(title = "numero de observaciones por categoria en DepartmentDescription", x = "DepartmentDescription", y = "count") + 
+  coord_flip()
+```
+
+### ScanCount
+
+`ScanCount` es una variable numérica
+
+* Cuál es el resumen de `ScanCount` en el dataset `total`?
+
+```{r}
+summary(total$ScanCount)
+```
+
+* Qué porcentaje de devoluciones hay en dataset `total`?
+
+```{r}
+paste('numero total de devoluciones', sum(total$ScanCount[total$ScanCount < 0]))
+paste('numero total de transacciones', sum(abs(total$ScanCount)))
+paste('pct de devoluciones', - sum(total$ScanCount[total$ScanCount < 0]) / sum(abs(total$ScanCount)))
+```
+
+## Preparación
+
+En esta sección preparamos los datos para los siguientes pasos.
+<p>Nota.- La libreria ReadR, con la instrucción read_csv genera tibbles con *correciones* automaticas</p>
+
+```{r}
+train_tibb <- read_csv("C:/Users/Eduardo/Desktop/Documentos Finales 1er Semestre/Mineria y Analisis de Datos/Examen Final/Trabajo en Equipo/proyecto_final_intro_to_ds_2017/michelle/walmart_train.csv")
+test_tibb <- read_csv("C:/Users/Eduardo/Desktop/Documentos Finales 1er Semestre/Mineria y Analisis de Datos/Examen Final/Trabajo en Equipo/proyecto_final_intro_to_ds_2017/michelle/walmart_test.csv")
+total_tibb <- bind_rows(train_tibb, test_tibb)
+```
+
+El parseo de `read_csv` no identifica ningºn problema en los datasets.
+
+```{r}
+problems(train_tibb)
+problems(test_tibb)
+problems(total_tibb)
+```
+
+**total_prep**
+
+```{r}
+total_prep <- total_tibb
+total_prep %<>%
+  mutate(TripType = as.factor(TripType)) %>%
+  mutate(VisitNumber = as.factor(VisitNumber)) %>%
+  mutate(Weekday = as.factor(Weekday)) %>%
+  mutate(ScanCount = as.numeric(ScanCount)) %>%
+  mutate(Upc = as.factor(Upc)) %>% 
+  mutate(FinelineNumber = as.factor(FinelineNumber)) %>% 
+  mutate(DepartmentDescription = as.factor(DepartmentDescription))
+
+glimpse(total_prep)
+
+saveRDS(total_prep, 'total_prep.RDS')
+```
+
+**train_prep**
+
+```{r}
+train_prep <- train_tibb
+
+train_prep %<>%
+  mutate(TripType = factor(TripType, levels(total_prep$TripType))) %>%
+  mutate(VisitNumber = factor(VisitNumber, levels(total_prep$VisitNumber))) %>%
+  mutate(Weekday = factor(Weekday, levels(total_prep$Weekday))) %>%
+  mutate(ScanCount = as.numeric(ScanCount)) %>%
+  mutate(Upc = factor(Upc, levels(total_prep$Upc))) %>% 
+  mutate(FinelineNumber = factor(FinelineNumber, levels(total_prep$FinelineNumber))) %>% 
+  mutate(DepartmentDescription = factor(DepartmentDescription, levels(total_prep$DepartmentDescription)))
+
+glimpse(train_prep)
+
+saveRDS(train_prep, 'train_prep.RDS')
+```
+
+**test_prep**
+
+```{r}
+test_prep <- test_tibb
+
+test_prep %<>%
+  #mutate(TripType = factor(TripType, levels(total_prep$TripType))) %>%
+  mutate(VisitNumber = factor(VisitNumber, levels(total_prep$VisitNumber))) %>%
+  mutate(Weekday = factor(Weekday, levels(total_prep$Weekday))) %>%
+  mutate(ScanCount = as.numeric(ScanCount)) %>%
+  mutate(Upc = factor(Upc, levels(total_prep$Upc))) %>% 
+  mutate(FinelineNumber = factor(FinelineNumber, levels(total_prep$FinelineNumber))) %>% 
+  mutate(DepartmentDescription = factor(DepartmentDescription, levels(total_prep$DepartmentDescription)))
+
+glimpse(test_prep)
+
+saveRDS(test_prep, 'test_prep.RDS')
+```
+
+
+## Limpieza e Imputación
+
+En esta sección hacemos la limpieza e imputación de los datasets.
+
+### Validaciones
+
+* Existe un único `TripType` por cada `VisitNumber` en el dataset `train`?
+
+Si, no hay ningn error.
+
+```{r, warning=FALSE, message = FALSE}
+validacion <- train %>% 
+  distinct(TripType, VisitNumber) %>% 
+  group_by(VisitNumber) %>% 
+  summarize(count = n_distinct(TripType)) %>% 
+  mutate(error = (count != 1))
+
+validacion %>% 
+  group_by(error) %>% 
+  summarize(n())
+```
+
+* Existe un nico `Weekday` por cada `VisitNumber` en el dataset `total`?
+
+Si, no hay ningn error.
+
+```{r, warning=FALSE, message = FALSE}
+validacion <- total %>% 
+  distinct(VisitNumber, Weekday) %>% 
+  group_by(VisitNumber) %>% 
+  summarize(count = n_distinct(Weekday)) %>% 
+  mutate(error = (count != 1))
+
+validacion %>% 
+  group_by(error) %>% 
+  summarize(n())
+```
+
+**Productos**
+
+```{r, warning=FALSE, message = FALSE}
+products <- total %>% 
+  select(Upc, FinelineNumber, DepartmentDescription) %>% 
+  group_by(Upc, FinelineNumber, DepartmentDescription) %>% 
+  summarize(num = n())
+```
+
+* Existe un único `FinelineNumber` por cada `Upc`?
+
+Existen 13 `Upc`s que tienen más de un `FinelineNumber`.
+
+```{r, warning=FALSE, message = FALSE}
+validacion <- products %>% 
+  group_by(Upc) %>% 
+  summarize(count = n_distinct(FinelineNumber)) %>% 
+  mutate(error = (count != 1))
+
+validacion %>% 
+  group_by(error) %>% 
+  summarize(n())
+```
+
+* Cuántas observaciones en `total` contienen `Upc`s que tienen más de un `FinelineNumber`?
+
+Esto ocurre en 136 observaciones.
+
+```{r, warning=FALSE, message = FALSE}
+error <- validacion$Upc[validacion$error]
+
+dim(total %>% filter(Upc %in% error))
+```
+
+* Existe un único `DepartmentDescription` por cada `Upc`?
+
+Existen 1 `Upc`s que tienen más de un `DepartmentDescription`.
+
+```{r, warning=FALSE, message = FALSE}
+validacion <- products %>% 
+  group_by(Upc) %>% 
+  summarize(count = n_distinct(DepartmentDescription)) %>% 
+  mutate(error = (count != 1))
+
+validacion %>% 
+  group_by(error) %>% 
+  summarize(n())
+```
+
+* ¿Quíen `Upc` tiene más de un `DepartmentDescription`?
+
+Se trata de los NAs.
+
+```{r, warning=FALSE, message = FALSE}
+error <- validacion$Upc[validacion$error]
+
+products %>% 
+  distinct(Upc, DepartmentDescription) %>% 
+  filter(Upc %in% error)
+```
+
+* Existe un único `DepartmentDescription` por cada `FinelineNumber`?
+
+Hay muchos `FinelineNumber`s que corresponden a diferentes `DepartmentDescription`s
+
+```{r, warning=FALSE, message = FALSE}
+validacion <- products %>% 
+  group_by(FinelineNumber) %>% 
+  summarize(count = n_distinct(DepartmentDescription)) %>% 
+  mutate(error = (count != 1))
+
+validacion %>% 
+  group_by(error) %>% 
+  summarize(n())
+```
+
+* Cuántas observaciones en `total` contienen `FinelineNumbers`s que tienen más de un `DepartmentDescription`?
+
+Esto ocurre en casi un millón de observaciones, es decir en el 75% de `total`.
+
+```{r, warning=FALSE, message = FALSE}
+error <- validacion$FinelineNumber[validacion$error]
+
+dim(total %>% filter(FinelineNumber %in% error))
+```
+
+### Campos vacíos
+
+* Qué entradas en `UPC` y `FinelineNumber` tienen NAs?
+
+Las entradas que tienen NAs en `UPC` son las mismas que tienen NAs en `FinelineNumber`.
+
+```{r, warning=FALSE, message = FALSE}
+products[is.na(products$Upc), ]
+```
+
+```{r, warning=FALSE, message = FALSE}
+products[is.na(products$FinelineNumber), ]
+```
+
+Las entradas que no tienen `DepartmentDescription` tampoco tienen `Upc` y `FinelineNumber`.
+
+```{r, warning=FALSE, message = FALSE}
+products[products$DepartmentDescription == 'NULL', ]
+```
+
+Distribución entre NULL `DepartmentDescription` y `TripType`
+
+```{r, warning=FALSE, message = FALSE}
+DepTripType<-total_prep%>%filter(DepartmentDescription=="NULL")%>%group_by(DepartmentDescription,TripType)%>%summarise(TotalItemSold=sum(ScanCount))%>%arrange(desc(TotalItemSold))
+DepTripType$NULLDpt<-ifelse(is.na(DepTripType$TripType),'Yes','No')
+DepTripType$NULLDpt<-factor(DepTripType$NULLDpt,levels = c('Yes','No'))
+head(DepTripType)
+ggplot(data=DepTripType)+geom_bar(mapping= aes(x=TripType, y=TotalItemSold, fill=NULLDpt), stat="identity") + 
+
+ scale_fill_manual(values=c('red','blue'))+coord_flip()
+
+
+
+
+```
+
+<p> Al parecer la variable `DepartmentDescription` igual a *NULL* implica `TripType`igual a `Na`</p>
+
+```{r, warning=FALSE, message = FALSE}
+DepTripType$TripTypeNA<-ifelse(is.na(DepTripType$TripType),'Yes','No')
+DepTripType%>%group_by(NULLDpt,TripTypeNA)%>%summarise(NetItemsSold=sum(TotalItemSold))
+
+```
+
+
+¿PHARMACY RX, tendrá observaciones sin `NA`s ?
+
+```{r, warning=FALSE, message = FALSE}
+a<-products%>%filter(DepartmentDescription=="PHARMACY RX") #[,21:26]
+a[21:26,]
+rm(a)
+```
+<p>Parece que los $5,426$ items en *Na* se refieren a un`Upc` o codigo de barrras no identificado, por lo que sería viable codificarlo como $0$ tanto el `Upc`como el `FineLineNumber`asociado, para catalogarlo como una nueva categoría</p>
+
+
+**train_clean**
+<p>Antes de comenzar con los modelos de selección es necesario dejar la base en formato TidyR. Es importante mencionar que el nivel más granular de la base `train_prep` es el número de `Upc`(código de barras). Un mismo codigo de barra puede tener varios `ScanCount`s o items comprados con el mismo código</p>
+
+<p>Usaremos la `tabla train_prep`. Dado que no contamos con la variable dependiente en el conjunto de prueba,vamos a generar un corte a la información de entrenamiento para poder en ese conjunto hacer *cross-validation*</p>
+
+<p>Antes generamos una variable que contenga información referente al porcentaje de las compras totales que se hizo en cada departamento durante el viaje</p>
+
+```{r, warning=FALSE, message = FALSE}
+str(train_prep)
+train_prep$Upc<-ifelse(is.na(train_prep$Upc),0,train_prep$Upc)
+train_prep$FinelineNumber<-NULL
+train_prep$Return<-ifelse(train_prep$ScanCount<0,'Yes','No')
+train_prep$Return<-factor(train_prep$Return,levels = c("Yes","No"))
+p<-ggplot(data=train_prep)+geom_bar(mapping=aes(x=DepartmentDescription,y=Return,fill = ScanCount),stat="summary",fun.y="sum",position="dodge")+coord_flip()
+Aux<-train_prep%>%group_by(DepartmentDescription,Return)%>%summarise(ItemsBoughtReturn=sum(ScanCount),ProductsBoughtReturn=n_distinct(ScanCount))
+Aux$ItemsBoughtReturn<-ifelse(Aux$ItemsBoughtReturn>0,Aux$ItemsBoughtReturn,Aux$ItemsBoughtReturn*-1)
+ggplot(data=Aux, aes(x=DepartmentDescription, y=ItemsBoughtReturn, fill=Return))+geom_bar(colour="black", stat="identity") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  theme(text = element_text(size = 6)) +
+  labs(title = "Numero de Productos Comprados y Regresados por Departamento", x = "Departamento", y = "Numero de Productos") + 
+  coord_flip()
+rm(Aux)
+
+
+
+```
+
+```{r, warning=FALSE, message = FALSE}
+#Tabla Auxiliar con el total Productos Comprados por Departamento
+Aux<-train_prep%>%group_by(VisitNumber,Weekday,DepartmentDescription)%>%summarise(DifferentTripTypes=n_distinct(TripType),ItemsBoughtReturn=sum(ScanCount),ProductsBought=n_distinct(Upc))
+Aux$Return<-ifelse(Aux$ItemsBoughtReturn<0,'Yes','No')
+
+Aux<-Aux%>%group_by(Weekday,DepartmentDescription)%>%summarize(DifferentTripTypes=sum(DifferentTripTypes),TotalItemSold=sum(ItemsBoughtReturn))
+Aux$Weekday<-factor(Aux$Weekday,levels = c('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'))
+
+
+p1<-ggplot(data=Aux, aes(x=DepartmentDescription, y=TotalItemSold, fill=Weekday))+geom_bar(colour="black", stat="identity") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  theme(text = element_text(size = 6)) +
+  labs(title = "Numero de Items Comprados por Departamento y día de la semana", x = "Departamento", y = "Numero de Productos") + 
+  coord_flip()+scale_fill_brewer(palette = "RdYlBu")
+
+p2<-ggplot(data=Aux, aes(x=DepartmentDescription, y=TotalItemSold, fill=Weekday))+geom_bar(colour="black", stat="identity",position="fill") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  theme(text = element_text(size = 6)) +
+  labs(title = "Porcentaje de Items Comprados por Departamento y día de la semana", x = "Departamento", y = "Numero de Productos") + 
+  coord_flip()+scale_fill_brewer(palette = "RdYlBu")
+
+#grid.arrange(p1,p2,ncol=1)
+
+
+p1
+p2
+
+```
+
+<Parece haber algo extraño con el departamento *Health and Beauty Aids* pues parece que **todas** las devoluciones se hicieron en días *Saturday* y **todas** las compras se hicieron en dias *Wednesday*</p>
+
+
+```{r, warning=FALSE, message = FALSE}
+ggplot(train_prep%>%filter(DepartmentDescription=='HEALTH AND BEAUTY AIDS'), aes(x = Weekday, fill=Return)) +
+  geom_histogram(colour="black",binwidth = 5,stat="count") +
+  ggtitle("Distribución de Items por día en Health And Beauty Aids") +
+  xlab("Día de la semana") +
+  ylab("Items")+scale_fill_manual(values=c("red","blue"))
+
+
+```
+
+```{r, warning=FALSE, message = FALSE}
+train_prep%>%filter(DepartmentDescription=='HEALTH AND BEAUTY AIDS')
+```
+<p>En el conjunto de entrenamiento solo se encuentra un item vendido (que fué regresado despues) en ese departamento. Observemos la distribución de items vendidos por día de la semana y departamento sin considerar *Health And Beauty Aids* . La nueva distribución se vería así</p>
+
+
+```{r, warning=FALSE, message = FALSE}
+ggplot(data=Aux%>%filter(DepartmentDescription!="HEALTH AND BEAUTY AIDS"), aes(x=DepartmentDescription, y=TotalItemSold, fill=Weekday))+geom_bar(colour="black", stat="identity",position="fill") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  theme(text = element_text(size = 6)) +
+  labs(title = "Porcentaje de Items Comprados por Departamento y día de la semana", x = "Departamento", y = "Numero de Productos") + 
+  coord_flip()+scale_fill_brewer(palette = "RdYlBu")
+```
+<p>Sin embargo, el día de la semana parece no aporta información que permita conocer el tipo de departamento (la proporción de los colores en las barras se mantienen constante)</p>
+
+
+
+
+<p>En esta parte se trabaja el total de observaciones de la base de entrenamiento para dejarla en **formato extendido** respecto a la variable `DepartmentDescription`.</p>
+
+```{r, warning=FALSE, message = FALSE}
+Aux<-train_prep%>%group_by(VisitNumber)%>%summarise(NetItemsBoughtReturn=sum(ScanCount),NetDistinctUpc=n_distinct(Upc))%>%arrange(desc(NetItemsBoughtReturn))
+#Aux$Return<-ifelse(Aux$ItemsBoughtReturn<0,'Yes','No')
+train_clean<-left_join(train_prep,Aux,by='VisitNumber')
+train_clean$ReturnVisit<-ifelse(train_clean$ScanCount<0&train_clean$NetDistinctUpc==1,'Yes','No')
+train_clean$TripClass<-ifelse(train_clean$TripType==999,'Other-999','IdentifiedTypes')
+train_clean%>%group_by(ReturnVisit, TripClass)%>%summarise(NetItemsBoughtReturn=sum(ScanCount),DistinctUpc=n_distinct(Upc))  
+  
+```
+<p>Nos gustaría poder clasificar a cada tipo de visita de acuerdo a la proporcion de compras en dcada departamento, por lo que generamos las variables de porcentaje que representan el número de items de cada observacion en el total de su departameno y el número de códigos de barra distintos</p>
+
+```{r, warning=FALSE, message = FALSE}
+
+train_clean$PercItems<-train_clean$ScanCount/train_clean$NetItemsBoughtReturn
+train_clean$PerUpcs<-1/train_clean$NetDistinctUpc
+train_clean$Return<-factor(train_clean$Return,levels = c('Yes','No'))
+train_clean$ReturnVisit<-factor(train_clean$ReturnVisit,levels = c('Yes','No'))
+train_clean$TripClass<-factor(train_clean$TripClass,levels = c('Other-999','IdentifiedTypes'))
+train_clean<-train_clean%>%arrange(TripType)
+head(train_clean)
+saveRDS(train_clean, 'train_clean.RDS')
+```
+
